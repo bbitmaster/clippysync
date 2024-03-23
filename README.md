@@ -18,9 +18,9 @@ To install ClippySync, you need to have Python 3.x installed on your system.
 First clone the repository, then navigate to the directory and run
 
 ```
-pip install clippysync
+pip install -e .
 ```
-You may also use the `-e` flag to install in editable mode
+You may omit the -e flag if you don't want to install in editable mode
 
 ## Configuration
 
