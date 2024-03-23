@@ -78,11 +78,28 @@ To stop ClippySync, press `Ctrl+C` in the terminal. The program will exit gracef
 
 ## Troubleshooting
 
-- If you encounter any issues or errors, make sure that:
-  - You have the latest version of ClippySync installed.
-  - The configuration file is properly formatted and contains valid IP addresses and port numbers.
-  - The machines specified in the configuration file are accessible and have ClippySync running.
-  - The necessary ports are open and not blocked by firewalls.
+If you encounter any issues or errors while using ClippySync, consider the following troubleshooting steps:
+
+1. Ensure that you have the latest version of ClippySync installed. Check for any available updates and upgrade to the most recent version.
+
+2. Verify that the configuration file (`config.yaml`) is properly formatted and contains valid IP addresses and port numbers. Double-check the syntax and ensure that each machine entry follows the correct format.
+
+3. Confirm that the machines specified in the configuration file are accessible and have ClippySync running. Ensure that the machines are powered on, connected to the network, and have ClippySync properly installed and configured.
+
+4. Check that the necessary ports specified in the configuration file are open and not blocked by firewalls. Ensure that the firewall settings on each machine allow incoming connections on the specified ports.
+
+5. If you encounter the following error when running ClippySync under tmux on Linux or in a terminal session outside of your desktop environment:
+   ```
+   Clipman error: Clipboard in TTY is unsupported.
+   ```
+   This error occurs due to a limitation in the `clipman` library when running in a non-graphical environment. To resolve this issue, you can set the following environment variables before running ClippySync:
+   ```bash
+   export XDG_SESSION_TYPE=x11
+   export DISPLAY=:1
+   ```
+   Note that the `DISPLAY` variable may need to be set to `:0` or another value depending on your specific X server display session. Ensure that the value of `DISPLAY` points to the correct X server display session.
+
+If you have followed the above troubleshooting steps and are still experiencing issues, please open an issue on the ClippySync GitHub repository, providing detailed information about the problem, including any error messages, system specifications, and steps to reproduce the issue. We'll be happy to assist you further.
 
 ## Contributing
 
