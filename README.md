@@ -3,6 +3,15 @@
 
 ClippySync is a command-line tool that allows you to sync clipboards across multiple machines on the same network. With ClippySync, you can easily share clipboard content between your devices, making it convenient to transfer text, links, or any other clipboard data seamlessly.
 
+## Why ClippySync?
+
+As the author of ClippySync, I developed this tool to address a personal need for clipboard syncing across multiple machines. In my setup, I use Sunshine and Moonlight for desktop sharing, which works great but lacks a built-in mechanism for clipboard sharing. ClippySync fills this gap by providing a seamless way to share clipboard content between devices.
+
+ClippySync is not limited to my specific use case, however. It can be beneficial in various situations where clipboard sharing is not natively supported by remote desktop software. If you find yourself frequently needing to transfer text, links, or other clipboard data between machines, ClippySync can be a valuable tool in your workflow.
+
+One notable aspect of ClippySync's development is the involvement of artificial intelligence (AI). Much of the code for this program was generated with the assistance of AI, using careful prompting and guidance from the author. As an experienced Python developer, I thoroughly reviewed, tested, and debugged the AI-generated code to ensure its functionality and reliability. In this sense, AI served as a powerful tool to expedite the development process while maintaining the necessary human oversight and expertise.
+
+Whether you're using remote desktop software that lacks clipboard sharing or simply need a convenient way to sync clipboards across your devices, ClippySync provides a straightforward solution. Its development showcases the potential of AI-assisted coding, demonstrating how AI can be leveraged to accelerate software development while still relying on human knowledge and judgment to ensure the final product meets the desired standards.
 ## Features
 
 - Sync clipboards across multiple machines
@@ -28,15 +37,26 @@ To use ClippySync, you need to create a YAML configuration file that specifies t
 
 ```yaml
 machines:
-  192.168.0.10: 50000
-  192.168.0.11: 50000
+  192.168.0.10: 51234
+  192.168.0.11: 51234
 ```
 
-In this example, the configuration file defines two machines with their IP addresses and the port number to use for communication (50000 in this case). You can add as many machines as you want to the configuration file.
+In this example, the configuration file defines two machines with their IP addresses and the port number to use for communication (51234 in this case). You can add as many machines as you want to the configuration file.
 
-Save the configuration file with a meaningful name, such as `config.yaml`.
+It's important to note that ClippySync does not provide any authentication mechanism beyond ensuring that incoming connections only come from IP addresses listed in the configuration file. As a result, it is highly recommended to use ClippySync only within a trusted local network environment.
 
+When configuring ClippySync, make sure that all the machines and ports specified in the configuration file can connect to each other directly. This typically requires the machines to be on the same local network or connected through a secure VPN tunnel. Avoid using ClippySync over the public internet or untrusted networks, as it lacks robust security measures.
 
+To minimize potential security risks, consider the following:
+
+- Use ClippySync only within a trusted local network or secure VPN tunnel.
+- Ensure that the machines listed in the configuration file are trusted and under your control.
+- Avoid exposing the ports used by ClippySync to the public internet.
+- Regularly review and update the configuration file to remove any machines that no longer require clipboard syncing.
+
+By following these guidelines and being mindful of the lack of authentication, you can use ClippySync safely within a controlled environment.
+
+Save the configuration file with a meaningful name, such as `config.yaml`, and keep it secure.
 ## Usage
 
 To start syncing clipboards, run the following command in your terminal:
