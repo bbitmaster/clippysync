@@ -9,6 +9,7 @@ ClippySync is a command-line tool that allows you to sync clipboards across mult
 - Easy configuration using a YAML file
 - Secure communication between machines
 - Cross-platform support (Windows, macOS, Linux)
+- Prints a message when a paste is sent or received, including the size of the paste in characters
 
 ## Installation
 
@@ -35,6 +36,7 @@ In this example, the configuration file defines two machines with their IP addre
 
 Save the configuration file with a meaningful name, such as `config.yaml`.
 
+
 ## Usage
 
 To start syncing clipboards, run the following command in your terminal:
@@ -47,7 +49,7 @@ Replace `/path/to/your/config.yaml` with the actual path to your configuration f
 
 ClippySync will start running and will continuously sync clipboards between the machines specified in the configuration file. Whenever you copy something to the clipboard on one machine, it will be automatically shared with the other machines.
 
-To stop ClippySync, press `Ctrl+C` in the terminal.
+To stop ClippySync, press `Ctrl+C` in the terminal. The program will exit gracefully.
 
 ## Command-line Options
 

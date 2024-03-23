@@ -16,25 +16,39 @@ def send_clipboard(host, port, data):
         try:
             client_socket.connect((host, port))
             client_socket.sendall(data.encode())
+            print(f"Sent clipboard data to {host}:{port} ({len(data)} characters)")
         except ConnectionRefusedError:
             pass
 
-def receive_clipboard(host, port, allowed_hosts):
+def receive_clipboard(host, port, allowed_hosts, stop_event):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen(5)
+    server_socket.settimeout(1.0)  # Set a timeout of 1 second
 
-    while True:
-        client_socket, address = server_socket.accept()
-        if address[0] in allowed_hosts:
-            data = b''
-            while True:
-                chunk = client_socket.recv(1048576)
-                if not chunk:
-                    break
-                data += chunk
-            clipman.set(data.decode())
-        client_socket.close()
+    while not stop_event.is_set():
+        try:
+            client_socket, address = server_socket.accept()
+            client_socket.settimeout(1.0)  # Set a timeout of 1 second
+            if address[0] in allowed_hosts:
+                data = b''
+                while True:
+                    try:
+                        chunk = client_socket.recv(1048576)
+                        if not chunk:
+                            break
+                        data += chunk
+                    except socket.timeout:
+                        if stop_event.is_set():
+                            break
+                clipboard_data = data.decode()
+                clipman.set(clipboard_data)
+                print(f"Received clipboard data from {address[0]}:{address[1]} ({len(clipboard_data)} characters)")
+            client_socket.close()
+        except socket.timeout:
+            pass
+
+    server_socket.close()
 
 
 def get_ip_addresses():
@@ -49,12 +63,15 @@ def waitForNewPaste(timeout=None):
     startTime = time.time()
     originalText = clipman.get()
     while True:
-        currentText = clipman.get()
-        if currentText != originalText:
-            return currentText
-        time.sleep(0.01)
-        if timeout is not None and time.time() > startTime + timeout:
-            raise TimeoutError('waitForNewPaste() timed out after ' + str(timeout) + ' seconds.')
+        try:
+            currentText = clipman.get()
+            if currentText != originalText:
+                return currentText
+            time.sleep(0.01)
+            if timeout is not None and time.time() > startTime + timeout:
+                raise TimeoutError('waitForNewPaste() timed out after ' + str(timeout) + ' seconds.')
+        except KeyboardInterrupt:
+            raise
 
 def start_clipboard_sharing(config):
     ip_addresses = get_ip_addresses()
@@ -75,35 +92,40 @@ def start_clipboard_sharing(config):
         return
 
     allowed_hosts = list(config["machines"].keys())
-    receive_thread = threading.Thread(target=receive_clipboard, args=(host, port, allowed_hosts))
+    stop_event = threading.Event()
+    receive_thread = threading.Thread(target=receive_clipboard, args=(host, port, allowed_hosts, stop_event))
     receive_thread.start()
 
     last_clipboard = clipman.get()
 
-    while True:
-        try:
-            current_clipboard = waitForNewPaste()
-            if current_clipboard != last_clipboard:
-                last_clipboard = current_clipboard
-                for machine_host, machine_port in config["machines"].items():
-                    if machine_host != host:
-                        send_clipboard(machine_host, machine_port, current_clipboard)
-        except clipman.exceptions.ClipmanBaseException as e:
-            print("Clipman error:", e)
+    try:
+        while not stop_event.is_set():
+            try:
+                current_clipboard = waitForNewPaste()
+                if current_clipboard != last_clipboard:
+                    last_clipboard = current_clipboard
+                    for machine_host, machine_port in config["machines"].items():
+                        if machine_host != host:
+                            send_clipboard(machine_host, machine_port, current_clipboard)
+            except clipman.exceptions.ClipmanBaseException as e:
+                print("Clipman error:", e)
+    except KeyboardInterrupt:
+        print("\nExiting ClippySync...")
+        stop_event.set()
+
+    receive_thread.join()
 
 def main():
     parser = argparse.ArgumentParser(
         description='A tool for syncing clipboards across multiple machines',
         formatter_class=argparse.RawTextHelpFormatter,
+        epilog='Example configuration file:\n'
+               '---\n'
+               'machines:\n'
+               '  192.168.0.10: 50000\n'
+               '  192.168.0.11: 50000\n'
     )
     parser.add_argument('--config', required=True, help='Path to the YAML configuration file')
-    parser.add_argument('--help', action='help', default=argparse.SUPPRESS,
-                        help='Show this help message and exit\n\n'
-                             'Example configuration file:\n'
-                             '---\n'
-                             'machines:\n'
-                             '  192.168.0.10: 50000\n'
-                             '  192.168.0.11: 50000\n')
 
     args = parser.parse_args()
 
