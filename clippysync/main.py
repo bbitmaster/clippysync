@@ -14,6 +14,8 @@ async def sync_clipboard(doc, node, author):
     # Watch for updates locally and from Iroh
     while True:
         await asyncio.sleep(1)
+        doc.start_sync(doc.get_sync_peers())
+        print(f"Syncing with peers: {doc.get_sync_peers()}")
 
         # Check clipman locally
         try:
