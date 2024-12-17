@@ -16,7 +16,11 @@ async def sync_clipboard(doc, node, author):
         await asyncio.sleep(0.1)
 
         # Check clipman locally
-        clipboard_data = clipman.get()
+        try:
+            clipboard_data = clipman.get()
+        except clipman.exceptions.ClipmanBaseException as e:
+            print("Clipman error:", e)
+            continue
 
         # Check Iroh for clipboard data
         query = iroh.Query.key_exact(b'clip', opts=None)
