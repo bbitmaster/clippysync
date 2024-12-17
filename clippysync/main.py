@@ -16,7 +16,7 @@ async def sync_clipboard(doc, node, author):
         await asyncio.sleep(1)
         peers = await doc.get_sync_peers()
         doc.start_sync(peers)
-        print(f"Syncing with peers: {peers}")
+        print(f"Syncing with peers: {peers.decode('utf8')}")
 
         # Check clipman locally
         try:
