@@ -83,7 +83,7 @@ async def main():
     else:
         # join doc
         doc_ticket = iroh.DocTicket(args.ticket)
-        doc = await node.docs().join(doc_ticket)
+        doc = await node.docs().join_and_subscribe(doc_ticket)
         doc_id = doc.id()
         print("Joined doc: {}".format(doc_id))
         author = await node.authors().create()
