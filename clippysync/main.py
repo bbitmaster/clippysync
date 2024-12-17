@@ -1,35 +1,28 @@
 
-# from signal import pause
 import iroh
-
 import argparse
 import asyncio
 import clipman
 
-
-
-
 async def sync_clipboard(doc, node, author):
+    # Storage for latest known clipboard data
     _CLIPBOARD = None
+
     # Initialize clipman
     clipman.init()
 
-    # Build iroh query options
-    # query_options = iroh.QueryOptions()
-
+    # Watch for updates locally and from Iroh
     while True:
         await asyncio.sleep(0.1)
-        # Watch for clipboard changes using clipman
+
+        # Check clipman locally
         clipboard_data = clipman.get()
 
-        # Watch for incoming clipboard data
-        # query all keys
+        # Check Iroh for clipboard data
         query = iroh.Query.key_exact(b'clip', opts=None)
         entry = await doc.get_one(query)
-        # key = entry.key()
         hash = entry.content_hash()
         content = await node.blobs().read_to_bytes(hash)
-        # content = await entry.content_bytes(doc)
         iroh_data = content.decode("utf8")
 
         # If _CLIPBAORD is the same as iroh_date, and clipboard_data is not the same as _CLIPBOARD, then update _CLIPBOARD and iroh_data
@@ -49,9 +42,8 @@ async def main():
     iroh.iroh_ffi.uniffi_set_event_loop(asyncio.get_running_loop())
 
     # parse arguments
-    parser = argparse.ArgumentParser(description='Python Iroh Node Demo')
-    parser.add_argument('--ticket', type=str, help='ticket to join a document')
-
+    parser = argparse.ArgumentParser(description='A tool for syncing clipboards across multiple machines')
+    parser.add_argument('--ticket', type=str, help='ticket to join a clipboard document')
     args = parser.parse_args()
 
     # create iroh node
@@ -61,6 +53,7 @@ async def main():
     node_id = await node.net().node_id()
     print("Started Iroh node: {}".format(node_id))
 
+    # If no ticket is provided, create a new document and share it
     if not args.ticket:
         print("In example mode")
         print("(To run the sync demo, please provide a ticket to join a document)")
@@ -70,14 +63,16 @@ async def main():
         doc = await node.docs().create()
         author = await node.authors().create()
         doc_id = doc.id()
+
         # create ticket to share doc
         ticket = await doc.share(iroh.ShareMode.WRITE, iroh.AddrInfoOptions.RELAY_AND_ADDRESSES)
 
         # add data to doc
         await doc.set_bytes(author, b"clip", b"ClippySync is awesome!")
-
         print("Created doc: {}".format(doc_id))
         print("Keep this running and in another terminal run:\n\npython main.py --ticket {}".format(ticket))
+    
+    # If a ticket is provided, join the document
     else:
         # join doc
         doc_ticket = iroh.DocTicket(args.ticket)
@@ -90,9 +85,8 @@ async def main():
         print("Waiting 5 seconds to let stuff sync...")
         await asyncio.sleep(5)
 
-    await sync_clipboard(doc, node, author) 
-
-    input("Press Enter to exit...")
+    # Start syncing the clipboard
+    await sync_clipboard(doc, node, author)
 
 if __name__ == "__main__":
     asyncio.run(main())
