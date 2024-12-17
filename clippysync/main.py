@@ -26,7 +26,7 @@ async def sync_clipboard(doc, node, author):
         # opts = iroh.QueryOptions(sort_by=iroh.SortBy.KEY_AUTHOR, direction=iroh.SortDirection.DESC, offset=0, limit=0)
         query = iroh.Query.single_latest_per_key(None)
         entry = await doc.get_many(query)
-        print(f"Entries: {[e.content_hash for e in entry]}")
+        print(f"Entries: {[e.content_hash() for e in entry]}")
         entry = entry[0]
         hash = entry.content_hash()
         content = await node.blobs().read_to_bytes(hash)
