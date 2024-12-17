@@ -23,9 +23,8 @@ async def sync_clipboard(doc, node, author):
             continue
 
         # Check Iroh for clipboard data
-        opts = iroh.QueryOptions(sort_by=iroh.SortBy.KEY_AUTHOR, direction=iroh.SortDirection.DESC, offset=0, limit=0)
-        query = iroh.Query.single_latest_per_key(opts)
-        # iroh.Doc().get_many()
+        # opts = iroh.QueryOptions(sort_by=iroh.SortBy.KEY_AUTHOR, direction=iroh.SortDirection.DESC, offset=0, limit=0)
+        query = iroh.Query.single_latest_per_key()
         entry = await doc.get_many(query)
         entry = entry[0]
         hash = entry.content_hash()
@@ -83,8 +82,7 @@ async def main():
     else:
         # join doc
         doc_ticket = iroh.DocTicket(args.ticket)
-        iroh.Docs().join_and_subscribe()
-        doc = await node.docs().join_and_subscribe(doc_ticket, iroh.SubscribeCallback())
+        doc = await node.docs().join(doc_ticket)
         doc_id = doc.id()
         print("Joined doc: {}".format(doc_id))
         author = await node.authors().create()
