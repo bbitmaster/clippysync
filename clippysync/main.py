@@ -1,144 +1,98 @@
+
+# from signal import pause
+import iroh
+
 import argparse
-import yaml
-import threading
+import asyncio
 import clipman
-import socket
-import psutil
-import time
-
-def load_config(config_file):
-    with open(config_file, "r") as file:
-        config = yaml.safe_load(file)
-    return config
-
-def send_clipboard(host, port, data):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-        try:
-            client_socket.connect((host, port))
-            client_socket.sendall(data.encode())
-            print(f"Sent clipboard data to {host}:{port} ({len(data)} characters)")
-        except ConnectionRefusedError:
-            pass
-
-def receive_clipboard(host, port, allowed_hosts, stop_event):
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((host, port))
-    server_socket.listen(5)
-    server_socket.settimeout(1.0)  # Set a timeout of 1 second
-
-    while not stop_event.is_set():
-        try:
-            client_socket, address = server_socket.accept()
-            client_socket.settimeout(1.0)  # Set a timeout of 1 second
-            if address[0] in allowed_hosts:
-                data = b''
-                while True:
-                    try:
-                        chunk = client_socket.recv(1048576)
-                        if not chunk:
-                            break
-                        data += chunk
-                    except socket.timeout:
-                        if stop_event.is_set():
-                            break
-                clipboard_data = data.decode()
-                clipman.set(clipboard_data)
-                print(f"Received clipboard data from {address[0]}:{address[1]} ({len(clipboard_data)} characters)")
-            client_socket.close()
-        except socket.timeout:
-            pass
-
-    server_socket.close()
 
 
-def get_ip_addresses():
-    ip_addresses = []
-    for interface, addrs in psutil.net_if_addrs().items():
-        for addr in addrs:
-            if addr.family == socket.AF_INET:
-                ip_addresses.append(addr.address)
-    return ip_addresses
 
-def waitForNewPaste(timeout=None):
-    startTime = time.time()
-    originalText = clipman.get()
+
+async def sync_clipboard(doc, node, author):
+    _CLIPBOARD = None
+    # Initialize clipman
+    clipman.init()
+
+    # Build iroh query options
+    # query_options = iroh.QueryOptions()
+
     while True:
-        try:
-            currentText = clipman.get()
-            if currentText != originalText:
-                return currentText
-            time.sleep(0.01)
-            if timeout is not None and time.time() > startTime + timeout:
-                raise TimeoutError('waitForNewPaste() timed out after ' + str(timeout) + ' seconds.')
-        except KeyboardInterrupt:
-            raise
+        await asyncio.sleep(0.1)
+        # Watch for clipboard changes using clipman
+        clipboard_data = clipman.get()
 
-def start_clipboard_sharing(config):
-    ip_addresses = get_ip_addresses()
-    if not ip_addresses:
-        print("No network interfaces found.")
-        return
+        # Watch for incoming clipboard data
+        # query all keys
+        query = iroh.Query.key_exact(b'clip', opts=None)
+        entry = await doc.get_one(query)
+        # key = entry.key()
+        hash = entry.content_hash()
+        content = await node.blobs().read_to_bytes(hash)
+        # content = await entry.content_bytes(doc)
+        iroh_data = content.decode("utf8")
 
-    host = None
-    port = None
-    for ip_address in ip_addresses:
-        if ip_address in config["machines"]:
-            host = ip_address
-            port = config["machines"][ip_address]
-            break
+        # If _CLIPBAORD is the same as iroh_date, and clipboard_data is not the same as _CLIPBOARD, then update _CLIPBOARD and iroh_data
+        if _CLIPBOARD == iroh_data and clipboard_data != _CLIPBOARD:
+            _CLIPBOARD = clipboard_data
+            await doc.set_bytes(author, b'clip', clipboard_data.encode())
+            print(f"Sent clipboard data to Iroh ({clipboard_data})")
+        # If _CLIPBOARD is not the same as iroh_data, then update _CLIPBOARD to iroh_data
+        elif _CLIPBOARD != iroh_data:
+            _CLIPBOARD = iroh_data
+            clipman.set(iroh_data)
+            print(f"Received clipboard data from Iroh ({iroh_data})")
 
-    if host is None or port is None:
-        print("No matching IP address found in the configuration.")
-        return
 
-    allowed_hosts = list(config["machines"].keys())
-    stop_event = threading.Event()
-    receive_thread = threading.Thread(target=receive_clipboard, args=(host, port, allowed_hosts, stop_event))
-    receive_thread.start()
+async def main():
+    # setup event loop, to ensure async callbacks work
+    iroh.iroh_ffi.uniffi_set_event_loop(asyncio.get_running_loop())
 
-    last_clipboard = clipman.get()
-
-    try:
-        while not stop_event.is_set():
-            try:
-                current_clipboard = waitForNewPaste()
-                if current_clipboard != last_clipboard:
-                    last_clipboard = current_clipboard
-                    for machine_host, machine_port in config["machines"].items():
-                        if machine_host != host:
-                            send_clipboard(machine_host, machine_port, current_clipboard)
-            except clipman.exceptions.ClipmanBaseException as e:
-                print("Clipman error:", e)
-    except KeyboardInterrupt:
-        print("\nExiting ClippySync...")
-        stop_event.set()
-
-    receive_thread.join()
-
-def main():
-    parser = argparse.ArgumentParser(
-        description='A tool for syncing clipboards across multiple machines',
-        formatter_class=argparse.RawTextHelpFormatter,
-        epilog='Example configuration file:\n'
-               '---\n'
-               'machines:\n'
-               '  192.168.0.10: 50000\n'
-               '  192.168.0.11: 50000\n'
-    )
-    parser.add_argument('--config', required=True, help='Path to the YAML configuration file')
+    # parse arguments
+    parser = argparse.ArgumentParser(description='Python Iroh Node Demo')
+    parser.add_argument('--ticket', type=str, help='ticket to join a document')
 
     args = parser.parse_args()
 
-    try:
-        clipman.init()
-        config = load_config(args.config)
-        start_clipboard_sharing(config)
-    except clipman.exceptions.ClipmanBaseException as e:
-        print("Clipman error:", e)
-    except FileNotFoundError:
-        print(f"Configuration file not found: {args.config}")
-    except yaml.YAMLError as e:
-        print(f"Invalid YAML configuration: {e}")
+    # create iroh node
+    options = iroh.NodeOptions()
+    options.enable_docs = True
+    node = await iroh.Iroh.memory_with_options(options)
+    node_id = await node.net().node_id()
+    print("Started Iroh node: {}".format(node_id))
+
+    if not args.ticket:
+        print("In example mode")
+        print("(To run the sync demo, please provide a ticket to join a document)")
+        print()
+
+        # create doc
+        doc = await node.docs().create()
+        author = await node.authors().create()
+        doc_id = doc.id()
+        # create ticket to share doc
+        ticket = await doc.share(iroh.ShareMode.WRITE, iroh.AddrInfoOptions.RELAY_AND_ADDRESSES)
+
+        # add data to doc
+        await doc.set_bytes(author, b"clip", b"ClippySync is awesome!")
+
+        print("Created doc: {}".format(doc_id))
+        print("Keep this running and in another terminal run:\n\npython main.py --ticket {}".format(ticket))
+    else:
+        # join doc
+        doc_ticket = iroh.DocTicket(args.ticket)
+        doc = await node.docs().join(doc_ticket)
+        doc_id = doc.id()
+        print("Joined doc: {}".format(doc_id))
+        author = await node.authors().create()
+
+        # sync & print
+        print("Waiting 5 seconds to let stuff sync...")
+        await asyncio.sleep(5)
+
+    await sync_clipboard(doc, node, author) 
+
+    input("Press Enter to exit...")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
