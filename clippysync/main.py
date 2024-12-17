@@ -13,7 +13,7 @@ async def sync_clipboard(doc, node, author):
 
     # Watch for updates locally and from Iroh
     while True:
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(1)
 
         # Check clipman locally
         try:
