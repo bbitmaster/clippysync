@@ -16,6 +16,8 @@ async def sync_clipboard(doc, node, author):
         await asyncio.sleep(1)
         peers = await doc.get_sync_peers()
         doc.start_sync(peers)
+        # iroh.Iroh.memory_with_options(iroh.NodeOptions())
+        # iroh.NodeDiscoveryConfig()
         # print(f"Syncing with peers: {[p.decode('utf8') for p in peers]}")
 
         # Check clipman locally
