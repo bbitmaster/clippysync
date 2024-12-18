@@ -14,8 +14,8 @@ async def sync_clipboard(doc, node, author):
     # Watch for updates locally and from Iroh
     while True:
         await asyncio.sleep(1)
-        peers = await doc.get_sync_peers()
-        doc.start_sync(peers)
+        # peers = await doc.get_sync_peers()
+        # doc.start_sync(peers)
         # iroh.Iroh.memory_with_options(iroh.NodeOptions())
         # iroh.NodeDiscoveryConfig()
         # print(f"Syncing with peers: {[p.decode('utf8') for p in peers]}")
@@ -29,14 +29,16 @@ async def sync_clipboard(doc, node, author):
 
         # Check Iroh for clipboard data
         # opts = iroh.QueryOptions(sort_by=iroh.SortBy.KEY_AUTHOR, direction=iroh.SortDirection.DESC, offset=0, limit=0)
-        query = iroh.Query.single_latest_per_key(None)
-        entry = await doc.get_many(query)
-        print(f"Entries: {[e.content_hash() for e in entry]}")
-        entry = entry[0]
+        # query = iroh.Query.single_latest_per_key(None)
+        # entry = await doc.get_many(query)
+        # print(f"Entries: {[e.content_hash() for e in entry]}")
+        # entry = entry[0]
+        query = iroh.Query.single_latest_per_key_exact(b"clip")
+        entry = await doc.get_one(query)
         hash = entry.content_hash()
         content = await node.blobs().read_to_bytes(hash)
         iroh_data = content.decode("utf8")
-        print(f"Received clipboard data from Iroh ({iroh_data})")
+        # print(f"Received clipboard data from Iroh ({iroh_data})")
 
         # If _CLIPBAORD is the same as iroh_date, and clipboard_data is not the same as _CLIPBOARD, then update _CLIPBOARD and iroh_data
         if _CLIPBOARD == iroh_data and clipboard_data != _CLIPBOARD:
