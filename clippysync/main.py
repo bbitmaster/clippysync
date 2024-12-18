@@ -24,11 +24,15 @@ async def sync_clipboard(doc, node, author):
             continue
 
         # Check Iroh for clipboard data
-        query = iroh.Query.single_latest_per_key_exact(b"clip")
-        entry = await doc.get_one(query)
-        hash = entry.content_hash()
-        content = await node.blobs().read_to_bytes(hash)
-        iroh_data = content.decode("utf8")
+        try:
+            query = iroh.Query.single_latest_per_key_exact(b"clip")
+            entry = await doc.get_one(query)
+            hash = entry.content_hash()
+            content = await node.blobs().read_to_bytes(hash)
+            iroh_data = content.decode("utf8")
+        except iroh.iroh_ffi.IrohError as e:
+            print("Iroh error:", e)
+            continue
 
         # If _CLIPBAORD is the same as iroh_date, and clipboard_data is not the same as _CLIPBOARD, then update _CLIPBOARD and iroh_data
         if _CLIPBOARD == iroh_data and clipboard_data != _CLIPBOARD:
